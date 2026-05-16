@@ -93,4 +93,14 @@ class BiometricOverlayActivity : FragmentActivity() {
             finish() // Siempre cerramos la pantalla transparente al final
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Si la actividad se destruye por un gesto de deslizar del sistema (atrás)
+        // sin haber completado la huella con éxito, liberamos el candado de inmediato.
+        // Al regresar al chat, el servicio lo volverá a bloquear en milisegundos.
+        if (!ChatSafeAccessibilityService.isSessionUnlocked) {
+            ChatSafeAccessibilityService.cancelLock()
+        }
+    }
 }

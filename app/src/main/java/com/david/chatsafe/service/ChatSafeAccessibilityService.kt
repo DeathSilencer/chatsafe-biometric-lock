@@ -90,24 +90,29 @@ class ChatSafeAccessibilityService : AccessibilityService() {
         if (pkg != "com.facebook.orca" && pkg != "com.whatsapp" && pkg != "com.instagram.android") return
         currentPackage = pkg
 
+        // 1. CAPTURA POR CLICK OPTIMIZADA (Bloqueo Instantáneo)
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
-            val eventText = event.text.toString()
-            val messengerList = BlockedUserRepo.getBlockedNames(this)
-            val whatsappList = BlockedUserRepo.getWhatsAppNames(this)
-            val instagramList = BlockedUserRepo.getInstagramNames(this)
+            val blockedList = when (pkg) {
+                "com.whatsapp" -> BlockedUserRepo.getWhatsAppNames(this)
+                "com.instagram.android" -> BlockedUserRepo.getInstagramNames(this)
+                else -> BlockedUserRepo.getBlockedNames(this)
+            }
 
-            if (messengerList.any { eventText.contains(it, ignoreCase = true) } ||
-                whatsappList.any { eventText.contains(it, ignoreCase = true) } ||
-                instagramList.any { eventText.contains(it, ignoreCase = true) }) {
+            // En lugar de leer el evento plano, escaneamos el interior del contenedor cliqueado
+            val clickedNode = event.source
+            val matchedName = findNameInClickedNode(clickedNode, blockedList)
 
-                lastChatDetected = eventText
+            if (matchedName != null) {
+                lastChatDetected = matchedName // Guardamos el nombre objetivo en sesión
 
                 if (!isSessionUnlocked) {
                     showOverlay(pkg)
+                    return // Interceptamos el flujo aquí mismo
                 }
             }
         }
 
+        // 2. ESCANEO DE VENTANA DE RESPALDO
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
             event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
 
@@ -118,6 +123,7 @@ class ChatSafeAccessibilityService : AccessibilityService() {
         }
     }
 
+    // --- LA FUNCIÓN QUE FALTABA ---
     private fun checkForLock(rootNode: AccessibilityNodeInfo, pkg: String) {
         val (nameOnScreen, isInsideSensitiveArea) = quickScan(rootNode, pkg)
 
@@ -141,6 +147,37 @@ class ChatSafeAccessibilityService : AccessibilityService() {
                 lastChatDetected = null
             }
         }
+    }
+
+    // NUEVA FUNCIÓN AUXILIAR: Escanea de forma ultra veloz el elemento tocado por el usuario
+    private fun findNameInClickedNode(node: AccessibilityNodeInfo?, blockedList: Set<String>): String? {
+        if (node == null) return null
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(node)
+        var counter = 0
+
+        // Buscamos solo en la jerarquía del elemento tocado (máximo 30 sub-nodos por velocidad)
+        while (!queue.isEmpty() && counter < 30) {
+            val current = queue.removeFirst()
+            counter++
+
+            val text = current.text?.toString()
+            val desc = current.contentDescription?.toString()
+
+            if (text != null) {
+                val matched = blockedList.find { text.contains(it, ignoreCase = true) }
+                if (matched != null) return matched
+            }
+            if (desc != null) {
+                val matched = blockedList.find { desc.contains(it, ignoreCase = true) }
+                if (matched != null) return matched
+            }
+
+            for (i in 0 until current.childCount) {
+                current.getChild(i)?.let { queue.add(it) }
+            }
+        }
+        return null
     }
 
     private fun quickScan(rootNode: AccessibilityNodeInfo, pkg: String): Pair<String?, Boolean> {
