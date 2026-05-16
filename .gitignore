@@ -1,0 +1,49 @@
+# --- Android Studio / IntelliJ ---
+.idea/
+*.iml
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/deploymentTargetDropDown.xml
+captureLayout.Config
+.idea/modules/
+.idea/jarRepositories.xml
+
+# --- Gradle ---
+.gradle/
+build/
+*/build/
+gradle/wrapper/gradle-wrapper.jar
+!gradle-wrapper.jar
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# --- Log Files ---
+*.log
+
+# --- Android OS / Device ---
+captures/
+*.apk
+*.ap_
+*.aab
+*.dex
+
+# --- System / OS ---
+.DS_Store
+Thumbs.db
+
+# --- Java / Kotlin ---
+*.class
+.kotlin/
+
+# --- Secrets & Signing ---
+# Si generaste el JKS o guardaste contraseñas de firma, NO las subas.
+*.jks
+*.keystore
+signing/
+secrets.xml
+google-services.json
